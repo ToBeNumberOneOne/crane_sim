@@ -1,0 +1,28 @@
+sim:
+  timestep: 0.01
+  realtime: true
+
+axes:
+  x:
+    actuator: velX
+    vmax: 2.0
+    amax: 0.4
+    offset: 0.0
+    soft_limit: [0, 200.0]
+
+  y:
+    actuator: velY
+    vmax: 1
+    amax: 0.2
+    offset: 0.0
+    soft_limit: [0, 20.0]
+
+  z:
+    actuator: velZ
+    vmax: 2.0
+    amax: 0.4
+    offset: 14.5
+    soft_limit: [-1.0, 20.0]
+
+telemetry:
+  publish_rate_hz: 50

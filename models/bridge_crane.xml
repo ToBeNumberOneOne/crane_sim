@@ -17,59 +17,38 @@
             height="3072" />
         <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4"
             rgb2="0.1 0.2 0.3"
-            markrgb="0.8 0.8 0.8" width="300" height="300" />
+            markrgb="0.8 0.8 0.8" width="1000" height="1000" />
         <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="1 1"
             reflectance="0.2" />
 
-        <!-- 导入 models/asset/factory.stl 作为 mesh 资源 -->
-        <mesh name="factory" file="asset/factory.stl"  />
         <mesh name="grabber" file="asset/grabber.stl" scale="0.01 0.01 0.01" />
-        <mesh name="trolley" file="asset/trolley.stl" scale="0.001 0.001 0.001" />
-        <mesh name="crane" file="asset/crane.stl" scale="0.001 0.001 0.001"  />
-        <mesh name="grab" file="asset/grab.stl" scale="0.001 0.001 0.001"  />
     </asset>
 
     <worldbody>
         <!-- 模型大小修改后光源可能也要调整 -->
-        <light pos="0 0 30" dir="0 0 -1" directional="true" />
-
-        <geom name="floor" size="60 18 0.05" pos= "0 0 0" type="plane" material="groundplane" />
-
-        <!-- 工厂建筑物 -->
-        <!-- <geom name="factory" type="mesh" mesh="factory" contype="0" conaffinity="0" /> -->
-        <!-- 桥式起重机主体 -->
-        <!-- <body name="crane" pos="-58 -21 -10">
-            <geom type="mesh" mesh="crane" contype="0" conaffinity="0" rgba="1 0 0 0.8"  />
-            
-        </body> 
-
-        <body name="grab" pos="-58 -21 -10">
-            <geom type="mesh" mesh="grab" contype="0" conaffinity="0" rgba="0.1 0.3 0 0.8"  />
-            
-        </body> 
-
-        <body name="trolley" pos="-58 -21 -10">
-            <geom type="mesh" mesh="trolley" contype="0" conaffinity="0" rgba="0 1 0 0.8"  />
-
-        </body> -->
-
-
+        <light pos="100 0 30" dir="0 0 -1" directional="true" />
+        <light pos="-100 0 30" dir="0 0 -1" directional="true" />
+        <geom name="floor" size="100 10 0.05" pos= "100 10 0" type="plane" material="groundplane" />
 
         <!-- 大车机构 -->
         <body name="AxisX_Frame" pos="0 0 20">
-            <inertial mass="1" pos= "0 0 0" diaginertia="0.1 0.1 0.1"/>
+            
+            <inertial mass="10" pos= "0 0 0" diaginertia="0.1 0.1 0.1"/>
             <joint name="AxisX" type="slide" axis="1 0 0" />
-
             <!--小车机构 -->
             <body name="AxisY_Frame" pos="0 0 0">
+                <camera name="camera1" pos="0 -15 10" xyaxes="1 0 0 0 0.7 0.7" />
+                <camera name="camera2" pos="15 0  10" xyaxes="0 1 0 -0.7 0 0.7" />
+                <camera name="camera3" pos="0.5 0.5 -0.1" xyaxes="1 0 0 0 1 0" />
                 <joint name="AxisY" type="slide" axis="0 1 0" />
                 <geom type="box" size="0.5 0.5 0.05"
-                    mass="1"
+                    mass="10"
                     rgba="0.92 0.25 0.25 1" />
                 <!-- 绳子连接点 -->
-               <body name="rope_top" pos="0 0 -0.05">
+               <body name="rope_top" pos="0 0 0.05">
                     <joint name="rope_joint" type="ball" />
-                    <site name="site_rope_top" pos="0 0 0" size="0.02" rgba="0 0 0 0"/>
+                    <site name="site_rope_top1" pos="-0.2 0 0" size="0.02" rgba="0 0 0 0"/>
+                    <site name="site_rope_top2" pos="0.4 0 0" size="0.02" rgba="0 0 0 0"/>
                     <!-- 绳子（深灰），作为视觉参考（初始长度 10） -->
                     <geom type="capsule"
                           fromto="0 0 0   0 0 -0.1"
@@ -78,15 +57,16 @@
                           rgba="0.33 0.33 0.33 1" />
 
                     <!-- 给 Cargo 增加沿绳子方向的 slide joint -->
-                    <body name="Cargo" pos="0 0 -0.1">
+                    <body name="Cargo" pos="0 0 -5">
 +                        <!-- 沿本地 z 轴上下移动 -->
                          
-+                        <joint name="AxisZ" type="slide" axis="0 0 1" damping = "50" />
++                        <joint name="AxisZ" type="slide" axis="0 0 1" damping = "20" />
 +                        <!-- site 便于运行时抓取位置或用 tendon 可视化 -->
-+                        <site name="site_bob" pos="0 0 0" size="0.02" rgba="0 0 0 0.0"/>
++                        <site name="site_bob1" pos="-0.2 0 0" size="0.02" rgba="0 0 0 0.0"/>
+                         <site name="site_bob2" pos="0.4 0 0" size="0.02" rgba="0 0 0 0.0"/>
                          <geom type="mesh" mesh="grabber" 
-                             mass="0.3"
-                             rgba="0.08 0.38 0.95 1" />
+                             mass="5"
+                             rgba="0.95 0.38 0.2 1" />
                     </body>
                 </body>
             </body>
@@ -97,8 +77,12 @@
     <tendon>
 +     <!-- spatial tendon：以 site 列表为路径，可加 wrap objects 实现经过滑轮 -->
 +     <spatial name="rope_tendon" width="0.02" rgba="0.33 0.33 0.33 1">
-+       <site site="site_rope_top"/>
-+       <site site="site_bob"/>
++       <site site="site_rope_top1"/>
++       <site site="site_bob1"/>
++     </spatial>
++     <spatial name="rope_tendon2" width="0.02" rgba="0.33 0.33 0.33 1">
++       <site site="site_rope_top2"/>
++       <site site="site_bob2"/>
 +     </spatial>
 +   </tendon>
 
@@ -106,23 +90,11 @@
     <actuator>
         <velocity name="velX" joint="AxisX" kv="80" ctrlrange="-2 2" />
         <velocity name="velY" joint="AxisY" kv="80" ctrlrange="-1 1" />
-        <position name="posZ" joint="AxisZ" kp="400" ctrlrange="-15 0" />
+        <velocity name="velZ" joint="AxisZ" kv="40" ctrlrange="-2 2" />
     </actuator>
 
     <!-- 传感器 -->
     <sensor>
-        <!-- X轴位置和速度 (大车) -->
-        <jointpos name="sensor_xPos" joint="AxisX" />
-        <jointvel name="sensor_xVel" joint="AxisX" />
-
-        <!-- Y轴位置和速度 (小车) -->
-        <jointpos name="sensor_yPos" joint="AxisY" />
-        <jointvel name="sensor_yVel" joint="AxisY" />
-
-        <!-- Z轴位置和速度 (吊绳长度) -->
-        <jointpos name="sensor_zPos" joint="AxisZ" />
-        <jointvel name="sensor_zVel" joint="AxisZ" />
-
         <!-- 吊物摆角 - 使用frameangvel和framelinvel来计算摆角 -->
         <!-- 测量Cargo相对于世界坐标系的角速度 -->
         <frameangvel name="sensor_cargo_angvel" objtype="body" objname="Cargo" />
