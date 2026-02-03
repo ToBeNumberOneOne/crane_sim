@@ -11,17 +11,19 @@ import mujoco
 class CLI:
     """Interactive command-line interface for crane control."""
 
-    def __init__(self, axes, state, model):
+    def __init__(self, axes, state, model, manager=None):
         """Initialize the CLI.
 
         Args:
             axes: Dictionary of AxisController instances (direct access)
             state: CraneState for monitoring (optional)
             model: MujocoModel for reset functionality
+            manager: ControllerManager for mode switching (optional)
         """
         self.axes = axes
         self.state = state
         self.model = model
+        self.manager = manager
         self._quit_flag = False
         self._quit_lock = threading.Lock()
 
@@ -40,6 +42,11 @@ class CLI:
         self.cmd_list.append(["1", "get_state", "获取当前状态", self._get_state])
         self.cmd_list.append(["s", "stop", "停止", self._stop])
         self.cmd_list.append(["r", "reset", "重置仿真", self._reset])
+
+        # Add mode switching command if manager available
+        if self.manager:
+            self.cmd_list.append(["m", "mode", "切换控制模式 mode [cli|xbox|plc]", self._mode])
+
         self.cmd_list.append(["q", "quit", "退出程序", self._quit])
 
         for it in self.cmd_list:
@@ -93,6 +100,11 @@ class CLI:
             print("用法: v vx vy vz")
             return
         try:
+            # Check if CLI mode is active
+            if self.manager and not self.manager.is_active("cli"):
+                print(f"当前控制模式: {self.manager.get_mode()}，CLI命令被忽略")
+                return
+
             vx, vy, vz = map(float, args)
             # Direct access to axes
             self.axes['x'].set_velocity(vx)
@@ -117,6 +129,11 @@ class CLI:
             print(f"用法: v{axis} value")
             return
         try:
+            # Check if CLI mode is active
+            if self.manager and not self.manager.is_active("cli"):
+                print(f"当前控制模式: {self.manager.get_mode()}，CLI命令被忽略")
+                return
+
             value = float(args[0])
             # Direct access to axis
             self.axes[axis].set_velocity(value)
@@ -162,6 +179,23 @@ class CLI:
             fmt(state['cmd_vel'].get('y', 'N/A')),
             fmt(state['cmd_vel'].get('z', 'N/A'))
         ))
+
+        # Display swing data if available
+        swing_data = state.get('swing', {})
+        if swing_data:
+            print("\n  吊具摆动状态")
+            print("  {:<12} {:<12}".format("摆角X(rad)", "摆角Y(rad)"))
+            print("  {:<12} {:<12}".format(
+                fmt(swing_data.get('swing_x', 0.0)),
+                fmt(swing_data.get('swing_y', 0.0))
+            ))
+            print("  {:<12} {:<12} {:<12}".format("角速度X", "角速度Y", "角速度Z"))
+            print("  {:<12} {:<12} {:<12}".format(
+                fmt(swing_data.get('ang_vel_x', 0.0)),
+                fmt(swing_data.get('ang_vel_y', 0.0)),
+                fmt(swing_data.get('ang_vel_z', 0.0))
+            ))
+
         print()
 
     def _stop(self, args=None):
@@ -180,6 +214,34 @@ class CLI:
             axis.reset()
 
         print("仿真状态已重置")
+
+    def _mode(self, args=None):
+        """Switch control mode or display current mode.
+
+        Args:
+            args: ['cli'|'xbox'|'plc'] or empty to display current mode
+        """
+        if not self.manager:
+            print("控制模式管理器未启用")
+            return
+
+        if len(args) == 0:
+            # Display current mode
+            current = self.manager.get_mode()
+            available = self.manager.list_available_modes()
+            print(f"当前控制模式: {current}")
+            print(f"可用模式: {', '.join(available)}")
+        elif len(args) == 1:
+            # Switch mode
+            mode = args[0].lower()
+            if self.manager.set_mode(mode):
+                # Mode switched successfully (message printed by manager)
+                pass
+            else:
+                print(f"切换失败: 模式 '{mode}' 不可用")
+                print(f"可用模式: {', '.join(self.manager.list_available_modes())}")
+        else:
+            print("用法: mode [cli|xbox|plc]")
 
     def _quit(self, args=None):
         """Request simulation to quit."""

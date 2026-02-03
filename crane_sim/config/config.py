@@ -24,6 +24,8 @@ class SimConfig:
     """Simulation configuration."""
     timestep: float  # Simulation timestep (seconds)
     realtime: bool  # Whether to run in real-time
+    plc_ip: str  # PLC IP address
+    db_number: int  # PLC DB block number
 
 
 class CraneConfig:

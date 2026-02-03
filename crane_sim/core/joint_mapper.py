@@ -6,7 +6,8 @@ and applying configuration offsets.
 """
 
 import mujoco
-from typing import Dict
+import numpy as np
+from typing import Dict, Tuple
 from crane_sim.config.config import AxisConfig
 
 
@@ -46,6 +47,16 @@ class JointMapper:
             self._qvel_indices[axis_name] = model.jnt_dofadr[joint_id]
             self._joint_ids[axis_name] = joint_id
 
+        # Find ball joint (rope_joint) for swing angle
+        self._ball_joint_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "rope_joint")
+        if self._ball_joint_id != -1:
+            self._ball_qpos_addr = model.jnt_qposadr[self._ball_joint_id]
+            self._ball_qvel_addr = model.jnt_dofadr[self._ball_joint_id]
+        else:
+            self._ball_joint_id = None
+            self._ball_qpos_addr = None
+            self._ball_qvel_addr = None
+
         # Log the mappings
         print("\n=== Joint Mapper Initialized ===")
         for axis_name in joint_configs.keys():
@@ -54,18 +65,22 @@ class JointMapper:
             qvel_idx = self._qvel_indices[axis_name]
             joint_name = model.joint(joint_id).name
             print(f"  {axis_name} axis: joint '{joint_name}' (id={joint_id}) -> qpos[{qpos_idx}], qvel[{qvel_idx}]")
+
+        if self._ball_joint_id is not None:
+            print(f"  swing: joint 'rope_joint' (id={self._ball_joint_id}) -> qpos[{self._ball_qpos_addr}:+4], qvel[{self._ball_qvel_addr}:+3]")
+
         print("================================\n")
 
     def get_position(self, data: mujoco.MjData, axis_name: str) -> float:
         """Get the position of a specific axis, with offset applied."""
         qpos_idx = self._qpos_indices[axis_name]
         offset = self.joint_configs[axis_name].offset
-        return float(data.qpos[qpos_idx] + offset)
+        return round(float(data.qpos[qpos_idx] + offset),3)
 
     def get_velocity(self, data: mujoco.MjData, axis_name: str) -> float:
         """Get the velocity of a specific axis."""
         qvel_idx = self._qvel_indices[axis_name]
-        return float(data.qvel[qvel_idx])
+        return round(float(data.qvel[qvel_idx]),3)
 
     def get_all_positions(self, data: mujoco.MjData) -> Dict[str, float]:
         """Get positions of all configured axes."""
@@ -84,4 +99,66 @@ class JointMapper:
     def get_raw_position(self, data: mujoco.MjData, axis_name: str) -> float:
         """Get the raw position without offset (for soft limits)."""
         qpos_idx = self._qpos_indices[axis_name]
-        return float(data.qpos[qpos_idx])
+        return round(float(data.qpos[qpos_idx]),3)
+
+    def get_swing_angles(self, data: mujoco.MjData) -> Tuple[float, float]:
+        """Get swing angles from ball joint (rope swing).
+
+        Returns:
+            Tuple of (swing_x, swing_y) in radians
+            swing_x: Swing angle in X direction (roll)
+            swing_y: Swing angle in Y direction (pitch)
+        """
+        if self._ball_joint_id is None:
+            return 0.0, 0.0
+
+        # Get quaternion from qpos [w, x, y, z]
+        qpos_addr = self._ball_qpos_addr
+        quat = data.qpos[qpos_addr:qpos_addr+4]
+
+        # Convert quaternion to euler angles (roll, pitch, yaw)
+        # Using ZYX convention
+        w, x, y, z = quat
+
+        # Roll (rotation around X axis)
+        sinr_cosp = 2 * (w * x + y * z)
+        cosr_cosp = 1 - 2 * (x * x + y * y)
+        roll = np.arctan2(sinr_cosp, cosr_cosp)
+
+        # Pitch (rotation around Y axis)
+        sinp = 2 * (w * y - z * x)
+        sinp = np.clip(sinp, -1.0, 1.0)  # Clamp for numerical stability
+        pitch = np.arcsin(sinp)
+
+        return round(float(roll), 4), round(float(pitch), 4)
+
+    def get_swing_angular_velocity(self, data: mujoco.MjData) -> Tuple[float, float]:
+        """Get angular velocity from ball joint.
+
+        Returns:
+            Tuple of (wx, wy, wz) in rad/s
+        """
+        if self._ball_joint_id is None:
+            return 0.0, 0.0
+
+        # Get angular velocity from qvel [wx, wy, wz]
+        qvel_addr = self._ball_qvel_addr
+        angvel = data.qvel[qvel_addr:qvel_addr+3]
+
+        return round(float(angvel[0]), 4), round(float(angvel[1]), 4)
+
+    def get_swing_data(self, data: mujoco.MjData) -> Dict:
+        """Get all swing-related data.
+
+        Returns:
+            Dictionary with swing angles and angular velocities
+        """
+        swing_x, swing_y = self.get_swing_angles(data)
+        wx, wy = self.get_swing_angular_velocity(data)
+
+        return {
+            'swing_x': swing_x,      # Swing angle in X direction (rad)
+            'swing_y': swing_y,      # Swing angle in Y direction (rad)
+            'ang_vel_x': wx,         # Angular velocity X (rad/s)
+            'ang_vel_y': wy,         # Angular velocity Y (rad/s)
+        }

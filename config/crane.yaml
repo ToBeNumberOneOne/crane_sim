@@ -1,6 +1,8 @@
 sim:
   timestep: 0.002
   realtime: true
+  plc_ip: "192.168.0.1"
+  db_number: 1
 
 axes:
   x:

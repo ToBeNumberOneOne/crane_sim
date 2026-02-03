@@ -6,6 +6,7 @@ context = zmq.Context()
 socket = context.socket(zmq.SUB)
 socket.connect("tcp://localhost:5555")
 socket.setsockopt_string(zmq.SUBSCRIBE, "")
+socket.setsockopt(zmq.CONFLATE, 1)
 
 data = {
     "x": {"pos": deque(maxlen=600), "vel": deque(maxlen=600)},
@@ -37,8 +38,8 @@ axs[5].set_xlabel("Time (s)")
 while True:
     msg = socket.recv_json()
     for idx, name in enumerate(["x", "y", "z"]):
-        data[name]["pos"].append(msg["pos"][idx])
-        data[name]["vel"].append(msg["vel"][idx])
+        data[name]["pos"].append(msg["pos"][name])
+        data[name]["vel"].append(msg["vel"][name])
     t.append(i * 0.1)
     i += 1
 
@@ -50,4 +51,4 @@ while True:
         axs[idx*2+1].relim()
         axs[idx*2+1].autoscale_view()
 
-    plt.pause(0.01)
+    plt.pause(0.001)

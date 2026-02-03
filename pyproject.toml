@@ -1,13 +1,15 @@
 [project]
 name = "simcrane"
 version = "0.1.0"
-description = "Add your description here"
+description = "Bridge crane simulation with multiple control interfaces"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "matplotlib>=3.10.8",
     "mujoco>=3.4.0",
     "numpy>=2.4.1",
+    "pygame>=2.5.0",
+    "python-snap7>=1.3",
     "pyyaml>=6.0.3",
     "zmq>=0.0.0",
 ]

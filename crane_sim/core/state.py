@@ -49,7 +49,8 @@ class CraneState:
             "timestamp": time.time(),
             "pos": mapper.get_all_positions(data),
             "vel": mapper.get_all_velocities(data),
-            "cmd_vel": cmd_velocities
+            "cmd_vel": cmd_velocities,
+            "swing": mapper.get_swing_data(data)
         }
 
         # Store latest state (thread-safe)

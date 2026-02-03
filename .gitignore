@@ -10,3 +10,7 @@ wheels/
 .venv
 
 /models/asset
+
+*.md
+
+tests/
