@@ -14,7 +14,7 @@ class SimulationLoop:
     state monitoring, and real-time synchronization.
     """
 
-    def __init__(self, model, axes, state, mapper, cli):
+    def __init__(self, model, axes, state, mapper, cli, xbox=None):
         """Initialize the simulation loop.
 
         Args:
@@ -23,12 +23,14 @@ class SimulationLoop:
             state: CraneState instance for monitoring
             mapper: JointMapper for joint position/velocity access
             cli: CLI instance (for quit flag checking)
+            xbox: XboxController instance (optional)
         """
         self.model = model
         self.axes = axes
         self.state = state
         self.mapper = mapper
         self.cli = cli
+        self.xbox = xbox
 
     def run(self, viewer):
         """Main simulation loop.
@@ -60,6 +62,10 @@ class SimulationLoop:
         Args:
             dt: Time step in seconds
         """
+        # Update Xbox controller in main thread (pygame requirement)
+        if self.xbox:
+            self.xbox.update()
+
         for axis in self.axes.values():
             # AxisController.update() is thread-safe and handles everything internally
             ctrl_value = axis.update(dt, self.mapper, self.model.data)

@@ -95,7 +95,7 @@ def main():
     print("=" * 60 + "\n")
 
     try:
-        SimulationLoop(model, axes, state, mapper, cli).run(viewer)
+        SimulationLoop(model, axes, state, mapper, cli, xbox).run(viewer)
     except KeyboardInterrupt:
         print("\n\n仿真被用户中断")
     finally:

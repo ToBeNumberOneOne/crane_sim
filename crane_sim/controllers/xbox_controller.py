@@ -46,6 +46,10 @@ class XboxController:
         pygame.init()
         pygame.joystick.init()
 
+        # Force refresh (critical for detection)
+        pygame.joystick.quit()
+        pygame.joystick.init()
+
         self.joystick = None
         if pygame.joystick.get_count() > 0:
             self.joystick = pygame.joystick.Joystick(0)
@@ -53,6 +57,61 @@ class XboxController:
             print(f"  - Xbox手柄已连接: {self.joystick.get_name()}")
         else:
             print("  - 未检测到Xbox手柄")
+
+        self.last_button_state = {}
+
+    def update(self):
+        """Update controller state (called from main simulation loop)."""
+        if not self.is_available():
+            return
+
+        # Process pygame events
+        pygame.event.pump()
+
+        # Only control if this mode is active
+        if not self.manager.is_active("xbox"):
+            return
+
+        # Read stick axes
+        left_x = self.joystick.get_axis(0)
+        left_y = self.joystick.get_axis(1)
+        right_y = self.joystick.get_axis(3)
+
+        # Apply deadzone
+        left_x = self._apply_deadzone(left_x)
+        left_y = self._apply_deadzone(left_y)
+        right_y = self._apply_deadzone(right_y)
+
+        # Map to velocities
+        vx = left_x * self.max_speeds['x']
+        vy = -left_y * self.max_speeds['y']
+        vz = -right_y * self.max_speeds['z']
+
+        # Set velocities
+        self.axes['x'].set_velocity(vx)
+        self.axes['y'].set_velocity(vy)
+        self.axes['z'].set_velocity(vz)
+
+        # Check buttons
+        if self.joystick.get_button(0):
+            if not self.last_button_state.get(0, False):
+                print("Xbox: 紧急停止")
+                for axis in self.axes.values():
+                    axis.set_velocity(0.0)
+            self.last_button_state[0] = True
+        else:
+            self.last_button_state[0] = False
+
+        if self.joystick.get_button(1):
+            if not self.last_button_state.get(1, False):
+                print("Xbox: 重置仿真")
+                import mujoco
+                mujoco.mj_resetData(self.manager.model.model, self.manager.model.data)
+                for axis in self.axes.values():
+                    axis.reset()
+            self.last_button_state[1] = True
+        else:
+            self.last_button_state[1] = False
 
     def is_available(self) -> bool:
         """Check if gamepad is connected.
@@ -78,84 +137,16 @@ class XboxController:
         return sign * (abs(value) - self.deadzone) / (1.0 - self.deadzone)
 
     def run(self):
-        """Main control loop (runs in separate thread)."""
-        if not self.is_available():
-            return
-
-        self._running = True
-        print("Xbox手柄控制器已启动")
-
-        last_button_state = {}
-
-        while self._running:
-            try:
-                # Process pygame events
-                pygame.event.pump()
-
-                # Only control if this mode is active
-                if self.manager.is_active("xbox"):
-                    # Read stick axes
-                    # Left stick: X-axis (0), Y-axis (1)
-                    # Right stick: X-axis (2), Y-axis (3)
-                    left_x = self.joystick.get_axis(0)
-                    left_y = self.joystick.get_axis(1)
-                    right_y = self.joystick.get_axis(3)
-
-                    # Apply deadzone
-                    left_x = self._apply_deadzone(left_x)
-                    left_y = self._apply_deadzone(left_y)
-                    right_y = self._apply_deadzone(right_y)
-
-                    # Map to velocities
-                    vx = left_x * self.max_speeds['x']
-                    vy = -left_y * self.max_speeds['y']  # Invert Y (up is negative)
-                    vz = -right_y * self.max_speeds['z']  # Invert Y (up is negative)
-
-                    # Set velocities (thread-safe)
-                    self.axes['x'].set_velocity(vx)
-                    self.axes['y'].set_velocity(vy)
-                    self.axes['z'].set_velocity(vz)
-
-                    # Check buttons
-                    # A button (0): Emergency stop
-                    if self.joystick.get_button(0):
-                        if not last_button_state.get(0, False):
-                            print("Xbox: 紧急停止")
-                            for axis in self.axes.values():
-                                axis.set_velocity(0.0)
-                        last_button_state[0] = True
-                    else:
-                        last_button_state[0] = False
-
-                    # B button (1): Reset
-                    if self.joystick.get_button(1):
-                        if not last_button_state.get(1, False):
-                            print("Xbox: 重置仿真")
-                            import mujoco
-                            mujoco.mj_resetData(self.manager.model.model, self.manager.model.data)
-                            for axis in self.axes.values():
-                                axis.reset()
-                        last_button_state[1] = True
-                    else:
-                        last_button_state[1] = False
-
-                # Sleep to avoid excessive CPU usage
-                time.sleep(0.02)  # 50Hz update rate
-
-            except Exception as e:
-                print(f"Xbox控制器错误: {e}")
-                time.sleep(0.1)
-
-        print("Xbox手柄控制器已停止")
+        """Main control loop - now handled by update() in main thread."""
+        pass
 
     def start(self):
-        """Start controller in background thread."""
-        if self.is_available() and not self._running:
-            self._thread = threading.Thread(target=self.run, daemon=True)
-            self._thread.start()
+        """Start controller - no background thread needed."""
+        if self.is_available():
+            print("Xbox手柄控制器已启动")
 
     def stop(self):
         """Stop the controller."""
-        self._running = False
-        if self._thread:
-            self._thread.join(timeout=1.0)
+        pass
+
+
