@@ -1,7 +1,7 @@
 <mujoco model="BridegeCraneModel">
     <compiler angle="radian" coordinate="local" />
 
-    <option timestep="0.001" gravity="0 0 -9.81" >
+    <option timestep="0.001" gravity="0 0 -9.81" integrator="RK4">
         <flag contact="enable" />
     </option>
 
@@ -53,19 +53,19 @@
                     <geom type="capsule"
                           fromto="0 0 0   0 0 -0.1"
                           size="0.02"
-                          mass="0.1"
+                          mass="0.001"
                           rgba="0.33 0.33 0.33 1" />
 
                     <!-- 给 Cargo 增加沿绳子方向的 slide joint -->
                     <body name="Cargo" pos="0 0 -5">
 +                        <!-- 沿本地 z 轴上下移动 -->
                          
-+                        <joint name="AxisZ" type="slide" axis="0 0 1" damping = "20" />
++                        <joint name="AxisZ" type="slide" axis="0 0 1"  />
 +                        <!-- site 便于运行时抓取位置或用 tendon 可视化 -->
 +                        <site name="site_bob1" pos="-0.2 0 0" size="0.02" rgba="0 0 0 0.0"/>
                          <site name="site_bob2" pos="0.4 0 0" size="0.02" rgba="0 0 0 0.0"/>
                          <geom type="mesh" mesh="grabber" 
-                             mass="5"
+                             mass="1"
                              rgba="0.95 0.38 0.2 1" />
                     </body>
                 </body>
@@ -90,7 +90,7 @@
     <actuator>
         <velocity name="velX" joint="AxisX" kv="80" ctrlrange="-2 2" />
         <velocity name="velY" joint="AxisY" kv="80" ctrlrange="-1 1" />
-        <velocity name="velZ" joint="AxisZ" kv="40" ctrlrange="-2 2" />
+        <velocity name="velZ" joint="AxisZ" kv="200" ctrlrange="-1.5 1.5" />
     </actuator>
 
     <!-- 传感器 -->

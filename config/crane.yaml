@@ -1,5 +1,5 @@
 sim:
-  timestep: 0.01
+  timestep: 0.002
   realtime: true
 
 axes:
@@ -19,9 +19,9 @@ axes:
 
   z:
     actuator: velZ
-    vmax: 2.0
+    vmax: 1.5
     amax: 0.4
-    offset: 14.5
+    offset: 11.5
     soft_limit: [-1.0, 20.0]
 
 telemetry:
