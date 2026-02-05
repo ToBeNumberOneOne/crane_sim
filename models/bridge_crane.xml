@@ -46,7 +46,7 @@
                     rgba="0.92 0.25 0.25 1" />
                 <!-- 绳子连接点 -->
                <body name="rope_top" pos="0 0 0.05">
-                    <joint name="rope_joint" type="ball" />
+                    <joint name="rope_joint" type="ball" damping="1.0" />
                     <site name="site_rope_top1" pos="-0.2 0 0" size="0.02" rgba="0 0 0 0"/>
                     <site name="site_rope_top2" pos="0.4 0 0" size="0.02" rgba="0 0 0 0"/>
                     <!-- 绳子（深灰），作为视觉参考（初始长度 10） -->

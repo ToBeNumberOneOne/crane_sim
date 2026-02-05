@@ -1,26 +1,6 @@
 """PLC S7 controller for crane control.
 
-This module provides Siemens S7 PLC control interface using snap7.
-
-DB Block Layout (example using DB1):
-  DBD0  (REAL) - X-axis position feedback (m)
-  DBD4  (REAL) - Y-axis position feedback (m)
-  DBD8  (REAL) - Z-axis position feedback (m)
-  DBD12 (REAL) - X-axis velocity feedback (m/s)
-  DBD16 (REAL) - Y-axis velocity feedback (m/s)
-  DBD20 (REAL) - Z-axis velocity feedback (m/s)
-  DBD24 (REAL) - X-axis velocity command (m/s)
-  DBD28 (REAL) - Y-axis velocity command (m/s)
-  DBD32 (REAL) - Z-axis velocity command (m/s)
-  DBX36.0 (BOOL) - Emergency stop signal
-  DBX36.1 (BOOL) - Reset signal
-  DBX37.0 (BOOL) - Connection status (write by PLC)
-  DBD40 (REAL) - Swing angle X feedback (rad)
-  DBD44 (REAL) - Swing angle Y feedback (rad)
-  DBD48 (REAL) - Angular velocity X feedback (rad/s)
-  DBD52 (REAL) - Angular velocity Y feedback (rad/s)
-  DBD56 (REAL) - Angular velocity Z feedback (rad/s)
-"""
+This module provides Siemens S7 PLC control interface using snap7."""
 
 import struct
 import time
@@ -43,7 +23,7 @@ class PLCController:
     Reads velocity commands from PLC and writes back position/velocity feedback.
     """
 
-    def __init__(self, axes, state, manager, plc_ip: str, rack: int = 0, slot: int = 1, db_number: int = 1):
+    def __init__(self, axes, state, manager, plc_ip: str, db_number: int = 1):
         """Initialize PLC controller.
 
         Args:
@@ -59,8 +39,8 @@ class PLCController:
         self.state = state
         self.manager = manager
         self.plc_ip = plc_ip
-        self.rack = rack
-        self.slot = slot
+        self.rack = 0
+        self.slot = 1
         self.db_number = db_number
 
         self._running = False
@@ -87,7 +67,7 @@ class PLCController:
         self.OFFSET_ESTOP = 112
         self.OFFSET_RESET = 112
 
-        self.DB_SIZE = 60  # Total size in bytes
+        self.DB_SIZE = 116  # Total size in bytes
 
         # Update rate
         self.update_interval = 0.05  # 20Hz
@@ -162,7 +142,7 @@ class PLCController:
                 return
 
             # Prepare data buffer
-            db_data = bytearray(self.DB_SIZE)
+            db_data = bytearray(100)
 
             # Write position feedback
             set_real(db_data, self.OFFSET_POS_X, state['pos'].get('x', 0.0))
@@ -239,7 +219,7 @@ class PLCController:
 
     def start(self):
         """Start controller in background thread."""
-        if self.is_available() and not self._running:
+        if  not self._running:
             self._thread = threading.Thread(target=self.run, daemon=True)
             self._thread.start()
 

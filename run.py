@@ -69,16 +69,16 @@ def main():
     # 6b. 初始化PLC控制器
     
     plc = PLCController(axes, state, manager, cfg.sim.plc_ip, cfg.sim.db_number)
-    if plc.is_available():
-        manager.register_controller("plc", plc)
-        plc.start()
+    plc.connect()
+    manager.register_controller("plc", plc)
+    plc.start()
 
     # 6c. 注册CLI控制器
     manager.register_controller("cli", "active")  # CLI always available
 
     # 7. 启动MuJoCo可视化窗口
     print("\n[7/8] 启动可视化窗口...")
-    viewer = mujoco.viewer.launch_passive(model.model, model.data)
+    viewer = mujoco.viewer.launch_passive(model.model, model.data,show_right_ui=False)
     print("  - MuJoCo 可视化已启动")
 
     # 8. 启动命令行交互线程（CLI），支持模式切换
