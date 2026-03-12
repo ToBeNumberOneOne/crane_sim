@@ -22,6 +22,8 @@ class CraneState:
         self._latest_state: Optional[Dict] = None
         self._state_lock = threading.Lock()
         self._stop_event = threading.Event()
+        self._publish_interval: float = 0.02  # default 50Hz
+        self._last_publish_time: float = 0.0
 
         # ZMQ publisher
         context = zmq.Context()
@@ -57,6 +59,14 @@ class CraneState:
         with self._state_lock:
             self._latest_state = state
 
+        # Publish directly in sim loop thread — no inter-thread delay
+        if state["timestamp"] - self._last_publish_time >= self._publish_interval:
+            try:
+                self.socket.send_json(state, zmq.NOBLOCK)
+            except zmq.Again:
+                pass  # subscriber not ready, drop this frame
+            self._last_publish_time = state["timestamp"]
+
         return state
 
     def get_latest(self) -> Optional[Dict]:
@@ -69,19 +79,12 @@ class CraneState:
             return self._latest_state
 
     def start_publish(self, interval=0.1):
-        """Start the background publishing thread.
+        """Configure publish rate. Publishing happens directly in sample().
 
         Args:
             interval: Publishing interval in seconds
         """
-        def loop():
-            while not self._stop_event.is_set():
-                state = self.get_latest()
-                if state is not None:
-                    self.socket.send_json(state)
-                time.sleep(interval)
-
-        threading.Thread(target=loop, daemon=True).start()
+        self._publish_interval = interval
 
     def stop_publish(self):
         """Stop the publishing thread."""
