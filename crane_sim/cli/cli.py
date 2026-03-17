@@ -205,15 +205,18 @@ class CLI:
         print("停止运动")
 
     def _reset(self, args=None):
-        """Reset simulation state."""
-        # Reset MuJoCo physics state
-        mujoco.mj_resetData(self.model.model, self.model.data)
+        """Reset simulation state to keyframe position."""
+        key_id = mujoco.mj_name2id(self.model.model, mujoco.mjtObj.mjOBJ_KEY, "home")
+        if key_id >= 0:
+            mujoco.mj_resetDataKeyframe(self.model.model, self.model.data, key_id)
+            print("仿真状态已重置到 home 位置")
+        else:
+            mujoco.mj_resetData(self.model.model, self.model.data)
+            print("未找到 home keyframe，已重置到默认位置")
 
         # Reset all axis controllers
         for axis in self.axes.values():
             axis.reset()
-
-        print("仿真状态已重置")
 
     def _mode(self, args=None):
         """Switch control mode or display current mode.
