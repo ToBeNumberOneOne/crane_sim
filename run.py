@@ -67,9 +67,7 @@ def main():
         print("  - Xbox手柄不可用")
 
     # 6b. 初始化PLC控制器
-    
     plc = PLCController(axes, state, manager, cfg.sim.plc_ip, cfg.sim.db_number)
-    plc.connect()
     manager.register_controller("plc", plc)
     plc.start()
 

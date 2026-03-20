@@ -2,7 +2,6 @@
 
 This module provides Siemens S7 PLC control interface using snap7."""
 
-import struct
 import time
 import threading
 from typing import Optional
@@ -31,8 +30,6 @@ class PLCController:
             state: CraneState instance
             manager: ControllerManager instance
             plc_ip: PLC IP address
-            rack: PLC rack number (default 0)
-            slot: PLC slot number (default 1)
             db_number: DB block number (default 1)
         """
         self.axes = axes
@@ -47,6 +44,7 @@ class PLCController:
         self._thread = None
         self.client: Optional['snap7.client.Client'] = None
         self.connected = False
+        self._reconnect_interval = 5.0  # seconds between reconnect attempts
 
         # DB offsets
         self.OFFSET_POS_X = 0
@@ -60,7 +58,7 @@ class PLCController:
         self.OFFSET_ANG_VEL_X = 32
         self.OFFSET_ANG_VEL_Y = 36
         self.OFFSET_ANG_VEL_Z = 40
- 
+
         self.OFFSET_CMD_VX = 100
         self.OFFSET_CMD_VY = 104
         self.OFFSET_CMD_VZ = 108
@@ -73,11 +71,7 @@ class PLCController:
         self.update_interval = 0.05  # 20Hz
 
     def is_available(self) -> bool:
-        """Check if snap7 library is available.
-
-        Returns:
-            True if snap7 is installed
-        """
+        """Check if snap7 library is available."""
         return SNAP7_AVAILABLE
 
     def connect(self) -> bool:
@@ -113,89 +107,85 @@ class PLCController:
 
         Returns:
             Tuple of (vx, vy, vz, estop, reset)
+
+        Raises:
+            Exception: on communication failure (caller triggers reconnect)
         """
-        try:
-            # Read entire DB block
-            db_data = self.client.db_read(self.db_number, 0, self.DB_SIZE)
+        db_data = self.client.db_read(self.db_number, 0, self.DB_SIZE)
 
-            # Parse velocity commands
-            vx = get_real(db_data, self.OFFSET_CMD_VX)
-            vy = get_real(db_data, self.OFFSET_CMD_VY)
-            vz = get_real(db_data, self.OFFSET_CMD_VZ)
+        vx = get_real(db_data, self.OFFSET_CMD_VX)
+        vy = get_real(db_data, self.OFFSET_CMD_VY)
+        vz = get_real(db_data, self.OFFSET_CMD_VZ)
 
-            # Parse control signals
-            estop = get_bool(db_data, self.OFFSET_ESTOP, 0)
-            reset = get_bool(db_data, self.OFFSET_RESET, 1)
+        estop = get_bool(db_data, self.OFFSET_ESTOP, 0)
+        reset = get_bool(db_data, self.OFFSET_RESET, 1)
 
-            return vx, vy, vz, estop, reset
-
-        except Exception as e:
-            print(f"PLC读取错误: {e}")
-            return 0.0, 0.0, 0.0, False, False
+        return vx, vy, vz, estop, reset
 
     def _write_feedback(self):
-        """Write position and velocity feedback to PLC."""
-        try:
-            # Get latest state
-            state = self.state.get_latest()
-            if state is None:
-                return
+        """Write position and velocity feedback to PLC.
 
-            # Prepare data buffer
-            db_data = bytearray(100)
-
-            # Write position feedback
-            set_real(db_data, self.OFFSET_POS_X, state['pos'].get('x', 0.0))
-            set_real(db_data, self.OFFSET_POS_Y, state['pos'].get('y', 0.0))
-            set_real(db_data, self.OFFSET_POS_Z, state['pos'].get('z', 0.0))
-
-            # Write velocity feedback
-            set_real(db_data, self.OFFSET_VEL_X, state['vel'].get('x', 0.0))
-            set_real(db_data, self.OFFSET_VEL_Y, state['vel'].get('y', 0.0))
-            set_real(db_data, self.OFFSET_VEL_Z, state['vel'].get('z', 0.0))
-
-            # Write swing data feedback
-            swing_data = state.get('swing', {})
-            set_real(db_data, self.OFFSET_SWING_X, swing_data.get('swing_x', 0.0))
-            set_real(db_data, self.OFFSET_SWING_Y, swing_data.get('swing_y', 0.0))
-            set_real(db_data, self.OFFSET_ANG_VEL_X, swing_data.get('ang_vel_x', 0.0))
-            set_real(db_data, self.OFFSET_ANG_VEL_Y, swing_data.get('ang_vel_y', 0.0))
-            set_real(db_data, self.OFFSET_ANG_VEL_Z, swing_data.get('ang_vel_z', 0.0))
-
-            # Write to PLC
-            self.client.db_write(self.db_number, 0, db_data)
-
-        except Exception as e:
-            print(f"PLC写入错误: {e}")
-
-    def run(self):
-        """Main control loop (runs in separate thread)."""
-        if not self.connect():
+        Raises:
+            Exception: on communication failure (caller triggers reconnect)
+        """
+        state = self.state.get_latest()
+        if state is None:
             return
 
+        db_data = bytearray(100)
+
+        set_real(db_data, self.OFFSET_POS_X, state['pos'].get('x', 0.0))
+        set_real(db_data, self.OFFSET_POS_Y, state['pos'].get('y', 0.0))
+        set_real(db_data, self.OFFSET_POS_Z, state['pos'].get('z', 0.0))
+
+        set_real(db_data, self.OFFSET_VEL_X, state['vel'].get('x', 0.0))
+        set_real(db_data, self.OFFSET_VEL_Y, state['vel'].get('y', 0.0))
+        set_real(db_data, self.OFFSET_VEL_Z, state['vel'].get('z', 0.0))
+
+        swing_data = state.get('swing', {})
+        set_real(db_data, self.OFFSET_SWING_X, swing_data.get('swing_x', 0.0))
+        set_real(db_data, self.OFFSET_SWING_Y, swing_data.get('swing_y', 0.0))
+        set_real(db_data, self.OFFSET_ANG_VEL_X, swing_data.get('ang_vel_x', 0.0))
+        set_real(db_data, self.OFFSET_ANG_VEL_Y, swing_data.get('ang_vel_y', 0.0))
+        set_real(db_data, self.OFFSET_ANG_VEL_Z, swing_data.get('ang_vel_z', 0.0))
+
+        self.client.db_write(self.db_number, 0, db_data)
+
+    def run(self):
+        """Main control loop (runs in separate thread).
+
+        Handles initial connection and automatic reconnection on failure.
+        """
         self._running = True
-        print("PLC控制器已启动")
+        print("PLC控制器已启动，等待连接...")
 
         last_reset = False
 
         while self._running:
+            # ── 连接阶段：未连接时持续重试 ──────────────────────────────
+            if not self.connected:
+                if not self.connect():
+                    # 等待重试，期间每秒检查一次 _running 标志
+                    for _ in range(int(self._reconnect_interval)):
+                        if not self._running:
+                            break
+                        time.sleep(1.0)
+                    continue
+                print("PLC控制器已就绪")
+
+            # ── 正常工作阶段 ─────────────────────────────────────────────
             try:
-                # Only control if this mode is active
                 if self.manager.is_active("plc"):
-                    # Read commands from PLC
                     vx, vy, vz, estop, reset = self._read_commands()
 
-                    # Handle emergency stop
                     if estop:
                         for axis in self.axes.values():
                             axis.set_velocity(0.0)
                     else:
-                        # Set velocities (thread-safe)
                         self.axes['x'].set_velocity(vx)
                         self.axes['y'].set_velocity(vy)
                         self.axes['z'].set_velocity(vz)
 
-                    # Handle reset signal (edge triggered)
                     if reset and not last_reset:
                         print("PLC: 重置仿真")
                         import mujoco
@@ -207,19 +197,21 @@ class PLCController:
                 # Always write feedback (even if not active mode)
                 self._write_feedback()
 
-                # Sleep
                 time.sleep(self.update_interval)
 
             except Exception as e:
-                print(f"PLC控制器错误: {e}")
-                time.sleep(0.5)
+                print(f"PLC通信错误: {e}，{self._reconnect_interval:.0f}秒后尝试重连...")
+                self.connected = False
+                # 停轴，避免失控
+                for axis in self.axes.values():
+                    axis.set_velocity(0.0)
 
         self.disconnect()
         print("PLC控制器已停止")
 
     def start(self):
         """Start controller in background thread."""
-        if  not self._running:
+        if not self._running:
             self._thread = threading.Thread(target=self.run, daemon=True)
             self._thread.start()
 

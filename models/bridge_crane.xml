@@ -114,4 +114,8 @@
         <ballangvel name="sensor_rope_angvel" joint="rope_joint" />
     </sensor>
 
+    <keyframe>
+        <!-- 工作位置 -->
+        <key name="home" qpos="1.5 0.8 1 0 0 0 2.0"></key>
+    </keyframe>
 </mujoco>

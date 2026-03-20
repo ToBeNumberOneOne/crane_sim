@@ -23,7 +23,7 @@ axes:
     actuator: velZ
     vmax: 1.5
     amax: 0.4
-    offset: 11.5
+    offset: 11.5 
     soft_limit: [-1.0, 20.0]
 
 telemetry:
