@@ -5,6 +5,7 @@ This module provides Siemens S7 PLC control interface using snap7."""
 import time
 import threading
 from typing import Optional
+from crane_sim.cli.cli import CLI
 
 try:
     import snap7
@@ -151,6 +152,11 @@ class PLCController:
 
         self.client.db_write(self.db_number, 0, db_data)
 
+    def reset(self):
+        """Reset simulation to home position using shared CLI method."""
+        print("PLC: 重置仿真")
+        CLI.perform_reset(self.manager.model, self.axes)
+
     def run(self):
         """Main control loop (runs in separate thread).
 
@@ -187,11 +193,7 @@ class PLCController:
                         self.axes['z'].set_velocity(vz)
 
                     if reset and not last_reset:
-                        print("PLC: 重置仿真")
-                        import mujoco
-                        mujoco.mj_resetData(self.manager.model.model, self.manager.model.data)
-                        for axis in self.axes.values():
-                            axis.reset()
+                        self.reset()
                     last_reset = reset
 
                 # Always write feedback (even if not active mode)

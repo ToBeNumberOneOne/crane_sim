@@ -206,16 +206,22 @@ class CLI:
 
     def _reset(self, args=None):
         """Reset simulation state to keyframe position."""
-        key_id = mujoco.mj_name2id(self.model.model, mujoco.mjtObj.mjOBJ_KEY, "home")
-        if key_id >= 0:
-            mujoco.mj_resetDataKeyframe(self.model.model, self.model.data, key_id)
-            print("仿真状态已重置到 home 位置")
-        else:
-            mujoco.mj_resetData(self.model.model, self.model.data)
-            print("未找到 home keyframe，已重置到默认位置")
+        self.perform_reset(self.model, self.axes)
+
+    @staticmethod
+    def perform_reset(model, axes):
+        """Reset simulation to home keyframe position (reusable across controllers).
+        
+        Args:
+            model: MujocoModel instance with model and data attributes
+            axes: Dictionary of AxisController instances
+        """
+        key_id = mujoco.mj_name2id(model.model, mujoco.mjtObj.mjOBJ_KEY, "home")
+        mujoco.mj_resetDataKeyframe(model.model, model.data, key_id)
+        print("仿真状态已重置到 home 位置")
 
         # Reset all axis controllers
-        for axis in self.axes.values():
+        for axis in axes.values():
             axis.reset()
 
     def _mode(self, args=None):

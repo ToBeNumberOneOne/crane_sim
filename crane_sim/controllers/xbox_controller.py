@@ -11,6 +11,7 @@ This module provides Xbox gamepad control interface:
 import pygame
 import time
 import threading
+from crane_sim.cli.cli import CLI
 
 
 class XboxController:
@@ -104,11 +105,7 @@ class XboxController:
 
         if self.joystick.get_button(1):
             if not self.last_button_state.get(1, False):
-                print("Xbox: 重置仿真")
-                import mujoco
-                mujoco.mj_resetData(self.manager.model.model, self.manager.model.data)
-                for axis in self.axes.values():
-                    axis.reset()
+                self.reset()
             self.last_button_state[1] = True
         else:
             self.last_button_state[1] = False
@@ -135,6 +132,11 @@ class XboxController:
         # Scale to full range after deadzone
         sign = 1 if value > 0 else -1
         return sign * (abs(value) - self.deadzone) / (1.0 - self.deadzone)
+
+    def reset(self):
+        """Reset simulation to home position using shared CLI method."""
+        print("Xbox: 重置仿真")
+        CLI.perform_reset(self.manager.model, self.axes)
 
     def run(self):
         """Main control loop - now handled by update() in main thread."""

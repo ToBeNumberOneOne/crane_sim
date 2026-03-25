@@ -62,8 +62,8 @@
                          
 +                        <joint name="AxisZ" type="slide" axis="0 0 1"  />
 +                        <!-- site 便于运行时抓取位置或用 tendon 可视化 -->
-+                        <site name="site_bob1" pos="-0.2 0 0" size="0.02" rgba="0 0 0 0.0"/>
-                         <site name="site_bob2" pos="0.4 0 0" size="0.02" rgba="0 0 0 0.0" />
++                        <site name="site_bob1" pos="-0.2 0 3.5" size="0.02" rgba="0 0 0 0.0"/>
+                         <site name="site_bob2" pos="0.4 0 3.5" size="0.02" rgba="0 0 0 0.0" />
                          <geom
                             name="cargo_dyn"
                             type="box"
@@ -71,7 +71,7 @@
                             mass="1"
                             rgba="0 0 0 0" />
                          <geom type="mesh" mesh="grabber" 
-                             pos="0 0 0"
+                             pos="0 0 3.5"
                              contype="0"
                              conaffinity="0"
                              density="0"
