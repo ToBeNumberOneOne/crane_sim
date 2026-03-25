@@ -1,29 +1,29 @@
 sim:
   timestep: 0.002
   realtime: true
-  plc_ip: "192.168.0.1"
-  db_number: 1
+  plc_ip: "192.168.111.240"
+  db_number: 2000
 
 axes:
   x:
     actuator: velX
     vmax: 2.0
-    amax: 0.4
+    amax: 0.5
     offset: 0.0
     soft_limit: [0, 200.0]
 
   y:
     actuator: velY
-    vmax: 1
-    amax: 0.2
+    vmax: 2
+    amax: 0.5
     offset: 0.0
     soft_limit: [0, 20.0]
 
   z:
     actuator: velZ
-    vmax: 1.5
-    amax: 0.4
-    offset: 11.5 
+    vmax: 1.0
+    amax: 0.5
+    offset: 15
     soft_limit: [-1.0, 20.0]
 
 telemetry:

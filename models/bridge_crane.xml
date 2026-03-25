@@ -98,8 +98,8 @@
     <!-- 小车执行器 -->
     <actuator>
         <velocity name="velX" joint="AxisX" kv="200" ctrlrange="-2 2" />
-        <velocity name="velY" joint="AxisY" kv="80" ctrlrange="-1 1" />
-        <velocity name="velZ" joint="AxisZ" kv="200" ctrlrange="-1.5 1.5" />
+        <velocity name="velY" joint="AxisY" kv="200" ctrlrange="-2 2" />
+        <velocity name="velZ" joint="AxisZ" kv="200" ctrlrange="-1 1" />
     </actuator>
 
     <!-- 传感器 -->
@@ -116,6 +116,6 @@
 
     <keyframe>
         <!-- 工作位置 -->
-        <key name="home" qpos="1.5 0.8 1 0 0 0 2.0"></key>
+        <key name="home" qpos="24 2 1 0 0 0 -11"></key>
     </keyframe>
 </mujoco>
