@@ -22,13 +22,16 @@
             reflectance="0.2" />
 
         <mesh name="grabber" file="asset/grabber.stl" scale="0.01 0.01 0.01" />
+
+        <hfield name="my_terrain" file="asset/terrain_map.png" size="54.9 16.6 25 0.1"/>
     </asset>
 
     <worldbody>
         <!-- 模型大小修改后光源可能也要调整 -->
+        <geom type="hfield" hfield="my_terrain" pos="54.9 16.6 0" rgba="0.5 0.5 0.5 1"/>
         <light pos="100 0 30" dir="0 0 -1" directional="true" />
         <light pos="-100 0 30" dir="0 0 -1" directional="true" />
-        <geom name="floor" size="100 10 0.05" pos= "100 10 0" type="plane" material="groundplane" />
+        <geom name="floor" size="54.9 16.6 0.05" pos= "54.9 16.6 0" type="plane" material="groundplane" />
 
         <!-- 大车机构 -->
         <body name="AxisX_Frame" pos="0 0 20">
