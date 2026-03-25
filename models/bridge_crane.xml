@@ -102,7 +102,8 @@
     <actuator>
         <velocity name="velX" joint="AxisX" kv="200" ctrlrange="-2 2" />
         <velocity name="velY" joint="AxisY" kv="200" ctrlrange="-2 2" />
-        <velocity name="velZ" joint="AxisZ" kv="200" ctrlrange="-1 1" />
+        <!-- Z轴由于重力补偿需略大于实际值 并且修改重量或KV后需要更新SimulationLoop重力补偿值 -->
+        <velocity name="velZ" joint="AxisZ" kv="200" ctrlrange="-2 2" /> 
     </actuator>
 
     <!-- 传感器 -->
