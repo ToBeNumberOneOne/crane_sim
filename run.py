@@ -69,6 +69,7 @@ def main():
     # 6b. 初始化PLC控制器
     plc = PLCController(axes, state, manager, cfg.sim.plc_ip, cfg.sim.db_number)
     manager.register_controller("plc", plc)
+    state.set_plc_controller(plc)  # Link PLC to state for control signal publishing
     plc.start()
 
     # 6c. 注册CLI控制器

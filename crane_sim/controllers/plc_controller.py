@@ -71,6 +71,10 @@ class PLCController:
         # Update rate
         self.update_interval = 0.05  # 20Hz
 
+        # Control signals from PLC
+        self.plc_start = False
+        self.plc_running = False
+
     def is_available(self) -> bool:
         """Check if snap7 library is available."""
         return SNAP7_AVAILABLE
@@ -120,8 +124,9 @@ class PLCController:
 
         estop = get_bool(db_data, self.OFFSET_ESTOP, 0)
         reset = get_bool(db_data, self.OFFSET_RESET, 1)
-
-        return vx, vy, vz, estop, reset
+        start = get_bool(db_data, self.OFFSET_RESET, 2)
+        running = get_bool(db_data, self.OFFSET_RESET, 4)
+        return vx, vy, vz, estop, reset, start, running
 
     def _write_feedback(self):
         """Write position and velocity feedback to PLC.
@@ -182,7 +187,11 @@ class PLCController:
             # ── 正常工作阶段 ─────────────────────────────────────────────
             try:
                 if self.manager.is_active("plc"):
-                    vx, vy, vz, estop, reset = self._read_commands()
+                    vx, vy, vz, estop, reset, start, running = self._read_commands()
+                    
+                    # Store control signals for state publishing
+                    self.plc_start = start
+                    self.plc_running = running
 
                     if estop:
                         for axis in self.axes.values():

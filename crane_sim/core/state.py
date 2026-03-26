@@ -24,6 +24,7 @@ class CraneState:
         self._stop_event = threading.Event()
         self._publish_interval: float = 0.02  # default 50Hz
         self._last_publish_time: float = 0.0
+        self.plc = None  # Will be set later by set_plc_controller()
 
         # ZMQ publisher
         context = zmq.Context()
@@ -55,6 +56,13 @@ class CraneState:
             "swing": mapper.get_swing_data(data)
         }
 
+        # Add PLC control signals (always available regardless of control mode)
+        if self.plc:
+            state["control_signals"] = {
+                "start": self.plc.plc_start,
+                "running": self.plc.plc_running
+            }
+
         # Store latest state (thread-safe)
         with self._state_lock:
             self._latest_state = state
@@ -77,6 +85,14 @@ class CraneState:
         """
         with self._state_lock:
             return self._latest_state
+
+    def set_plc_controller(self, plc):
+        """Set the PLC controller for accessing control signals.
+
+        Args:
+            plc: PLCController instance
+        """
+        self.plc = plc
 
     def start_publish(self, interval=0.1):
         """Configure publish rate. Publishing happens directly in sample().
