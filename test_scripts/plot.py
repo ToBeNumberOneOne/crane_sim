@@ -174,3 +174,6 @@ while plt.get_fignums():
 
     for ax in [axvx, axcx, axvy, axcy, axvz, axcz, axawx, axawy]:
         ax.relim()
+        ax.autoscale_view()
+
+    plt.pause(0.02)
