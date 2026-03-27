@@ -10,7 +10,6 @@ wheels/
 .venv
 .claude
 
-/models/asset
 
 *.md
 *.csv
