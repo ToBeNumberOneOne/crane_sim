@@ -59,28 +59,36 @@ class PLCTrajectoryTool:
             batch_end = min(batch_start + 100, total_points)
             batch_df = points_df.iloc[batch_start:batch_end]
             
-            # 创建缓冲区并发送
-            buffer = bytearray(2500)
+            # 1. 专门创建一个数据缓冲区 (不包含 BatchID)
+        # 假设数据从偏移量 10 开始 (MovePointNum)
+            data_buffer = bytearray(2406) # 足够容纳 100 个点 + 计数器
             
-            # 写入 BatchID 和 MovePointNum
+            # 写入点数
+            set_int(data_buffer, 2, len(batch_df)) # 对应 DB 偏移量 10
             
-            set_int(buffer, 10, len(batch_df))
-            
-            # 写入点数据
-            current_offset = 14
+            # 写入点位
+            offset = 6 # 对应 DB 偏移量 14
             for _, row in batch_df.iterrows():
-                set_real(buffer, current_offset,      float(row['x']))
-                set_real(buffer, current_offset + 4,  float(row['y']))
-                set_real(buffer, current_offset + 8,  float(row['z']))
-                set_real(buffer, current_offset + 12, float(row['vx']))
-                set_real(buffer, current_offset + 16, float(row['vy']))
-                set_real(buffer, current_offset + 20, float(row['vz']))
-                current_offset += 24
-            
-            # 发送至 PLC
-            set_int(buffer, 2414, self.batch_id)
-            write_size = current_offset - 8
-            self.client.db_write(self.db_num, 8, buffer[8:2500])
+                set_real(data_buffer, offset,      float(row['x']))
+                set_real(data_buffer, offset + 4,  float(row['y']))
+                set_real(data_buffer, offset + 8,  float(row['z']))
+                
+                set_real(data_buffer, offset + 12,  float(row['vx']))
+                set_real(data_buffer, offset + 16,  float(row['vy']))
+                set_real(data_buffer, offset + 20,  float(row['vz']))
+                offset += 24
+
+            # --- 关键修改 ---
+            # 第一步：只写轨迹点数据
+            # 写入 DB 偏移量 8 开始的数据，但不包含末尾的 BatchID
+            self.client.db_write(self.db_num, 8, data_buffer)
+
+            # 第二步：确保数据写完后，单独写入 BatchID 触发信号
+            # 假设 BatchID 在偏移量 2414
+            trigger_buffer = bytearray(2)
+            set_int(trigger_buffer, 0, self.batch_id)
+            self.client.db_write(self.db_num, 2414, trigger_buffer)
+
             
             points_sent += len(batch_df)
             progress = (points_sent / total_points) * 100
